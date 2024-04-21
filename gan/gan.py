@@ -85,9 +85,9 @@ def generator(noise_dim=NOISE_DIM, seed=None):
 
     model = nn.Sequential(
         nn.Linear(noise_dim, 1024),
-        nn.LeakyReLU(0.01),
+        nn.ReLU(),
         nn.Linear(1024, 1024),
-        nn.LeakyReLU(0.01),
+        nn.ReLU(),
         nn.Linear(1024, 784),
         nn.Tanh()
     )
