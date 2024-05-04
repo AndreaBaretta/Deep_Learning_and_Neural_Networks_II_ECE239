@@ -34,7 +34,7 @@ class DMConfig:
     num_feat = 128                        # feature size of the UNet model
     omega: float = 2.0                    # conditional guidance weight
 
-    batch_size: int = 256                 # training batch size
+    batch_size: int = 128                 # training batch size
     epochs: int = 20                      # training epochs
     learning_rate: float = 1e-4           # training learning rate
     multi_lr_milestones: List[int] = field(default_factory=lambda: [20]) # learning rate decay milestone
