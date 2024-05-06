@@ -63,10 +63,11 @@ class ConditionalDDPM(nn.Module):
 
         # one_hot = torch.zeros(len(conditions), self.dmconfig.num_classes, device=device)
         # one_hot[torch.arange(len(conditions)), conditions] = 1
+        assert len(conditions.shape) == 1
         one_hot = F.one_hot(conditions, self.dmconfig.num_classes,)
         mask_p = (torch.rand(len(conditions), device=device) > self.dmconfig.mask_p).long()
         one_hot = one_hot*mask_p[:, None] - (1-mask_p[:, None])
-        t_s = torch.randint(0, T, (len(conditions),), device=device)
+        t_s = torch.randint(1, T+1, (len(conditions),), device=device)
         epsilon = torch.randn_like(images, device=device)
         sched = self.scheduler(t_s)
         x_t = images*(sched['sqrt_alpha_bar'][:, None, None, None]) + \
@@ -94,45 +95,33 @@ class ConditionalDDPM(nn.Module):
         #       generated_images  
 
         # You lie! Conditions is being passed to this already one hot
-        nada = -torch.ones_like(conditions, device=device)
-        X_t = torch.randn(
-            len(conditions), 
-            self.dmconfig.num_channels, 
-            *self.dmconfig.input_dim,
-            device=device
-        )
+        with torch.no_grad():
+            # assert conditions.shape[1] == 10
+            nada = -torch.ones_like(conditions, device=device)
+            X_t = torch.randn(
+                len(conditions), 
+                self.dmconfig.num_channels, 
+                *self.dmconfig.input_dim,
+                device=device
+            )
 
-        for t in range(T, 0, -1):
-            print(t)
-            z = torch.randn_like(X_t, device=device) if t > 1 else torch.zeros_like(X_t, device=device)
-            epsilon_tilde = (1 + omega)*self.network.forward(
-                                X_t, torch.full((len(conditions),), t, device=device), conditions
-                            )\
-                            - omega*self.network.forward(
-                                X_t, torch.full((len(conditions),), t, device=device), nada
-                            )
-            sched = self.scheduler(torch.tensor(t))
-            oneover_sqrt_alpha = sched['oneover_sqrt_alpha']
-            sqrt_oneminus_alpha_bar = sched['sqrt_oneminus_alpha_bar']
-            sigma_t = sched['sqrt_beta_t']
-            alpha_t = sched['alpha_t']
-            X_t_1 = oneover_sqrt_alpha*(X_t - (1-alpha_t)*sqrt_oneminus_alpha_bar*epsilon_tilde) \
-                  + sigma_t*z
-            del z
-            del epsilon_tilde
-            del sched
-            del oneover_sqrt_alpha
-            del sqrt_oneminus_alpha_bar
-            del sigma_t
-            del alpha_t
-            del X_t
-            X_t = torch.clone(X_t_1)
-            del X_t_1
-            gc.collect()
-            torch.cuda.empty_cache()
-            pass
+            for t in range(T, 0, -1):
+                z = torch.randn_like(X_t, device=device) if t > 1 else torch.zeros_like(X_t, device=device)
+                epsilon_tilde = (1 + omega)*self.network.forward(
+                                    X_t, torch.full((len(conditions),), t, device=device), conditions
+                                )\
+                                - omega*self.network.forward(
+                                    X_t, torch.full((len(conditions),), t, device=device), nada
+                                )
+                sched = self.scheduler(torch.tensor(t))
+                oneover_sqrt_alpha = sched['oneover_sqrt_alpha']
+                sqrt_oneminus_alpha_bar = sched['sqrt_oneminus_alpha_bar']
+                sigma_t = sched['sqrt_beta_t']
+                alpha_t = sched['alpha_t']
+                X_t = oneover_sqrt_alpha*(X_t - ((1-alpha_t)/sqrt_oneminus_alpha_bar)*epsilon_tilde) \
+                    + sigma_t*z
+                pass
 
-
-        # ==================================================== #
-        generated_images = (X_t * 0.3081 + 0.1307).clamp(0,1) # denormalize the output images
-        return generated_images
+            # ==================================================== #
+            generated_images = (X_t * 0.3081 + 0.1307).clamp(0,1) # denormalize the output images
+            return generated_images
