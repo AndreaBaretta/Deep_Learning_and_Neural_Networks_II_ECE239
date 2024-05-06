@@ -24,14 +24,13 @@ class ConditionalDDPM(nn.Module):
         #       one dictionary containing the variance schedule
         #       $\beta_t$ along with other potentially useful constants.       
 
-        norm_t_s = torch.linspace(0, 1, T, device=device)
-        beta_t = beta_1 * (1 - norm_t_s) + beta_T * norm_t_s
+        # norm_t_s = torch.linspace(0, 1, T, device=device)
+        # beta_t = beta_1 * (1 - norm_t_s) + beta_T * norm_t_s
+        beta_t = torch.linspace(beta_1, beta_T, T, device=device)
         sqrt_beta_t = torch.sqrt(beta_t)
         alpha_t = 1 - beta_t
         oneover_sqrt_alpha = 1/torch.sqrt(alpha_t)
-        lo = alpha_t.repeat(T,1).tril()
-        up = torch.ones_like(lo, device=device).triu(diagonal=1)
-        alpha_t_bar = (up + lo).prod(axis=1)
+        alpha_t_bar = torch.cumprod(alpha_t, axis=0)
         sqrt_alpha_bar = alpha_t_bar.sqrt()
         sqrt_oneminus_alpha_bar = (1 - alpha_t_bar).sqrt()
 
@@ -64,7 +63,7 @@ class ConditionalDDPM(nn.Module):
         # one_hot = torch.zeros(len(conditions), self.dmconfig.num_classes, device=device)
         # one_hot[torch.arange(len(conditions)), conditions] = 1
         assert len(conditions.shape) == 1
-        one_hot = F.one_hot(conditions, self.dmconfig.num_classes,)
+        one_hot = F.one_hot(conditions, self.dmconfig.num_classes).to(device)
         mask_p = (torch.rand(len(conditions), device=device) > self.dmconfig.mask_p).long()
         one_hot = one_hot*mask_p[:, None] - (1-mask_p[:, None])
         t_s = torch.randint(1, T+1, (len(conditions),), device=device)
@@ -72,7 +71,7 @@ class ConditionalDDPM(nn.Module):
         sched = self.scheduler(t_s)
         x_t = images*(sched['sqrt_alpha_bar'][:, None, None, None]) + \
               epsilon*sched['sqrt_oneminus_alpha_bar'][:, None, None, None]
-        epsilon_theta = self.network.forward(x_t, t_s, one_hot)
+        epsilon_theta = self.network.forward(x_t, t_s.float()/T, one_hot)
         noise_loss = self.loss_fn(epsilon_theta, epsilon)
 
         # ==================================================== #
@@ -107,11 +106,11 @@ class ConditionalDDPM(nn.Module):
 
             for t in range(T, 0, -1):
                 z = torch.randn_like(X_t, device=device) if t > 1 else torch.zeros_like(X_t, device=device)
-                epsilon_tilde = (1 + omega)*self.network.forward(
-                                    X_t, torch.full((len(conditions),), t, device=device), conditions
+                epsilon_tilde = (1 + omega)*self.network(
+                                    X_t, torch.full((len(conditions),), t/T, device=device), conditions
                                 )\
-                                - omega*self.network.forward(
-                                    X_t, torch.full((len(conditions),), t, device=device), nada
+                                - omega*self.network(
+                                    X_t, torch.full((len(conditions),), t/T, device=device), nada
                                 )
                 sched = self.scheduler(torch.tensor(t))
                 oneover_sqrt_alpha = sched['oneover_sqrt_alpha']
