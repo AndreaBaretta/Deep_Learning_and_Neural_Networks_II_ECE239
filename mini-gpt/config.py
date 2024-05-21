@@ -10,7 +10,7 @@ class BigramConfig:
     to_log: bool = True
     log_interval: int = 100
     save_path: Path = Path("models/bigram/")
-    batch_size: int = 32*8
+    batch_size: int = 32
     scheduler: bool = False
     to_clip_grad: bool = False
     gradient_clip: float = 1.0
@@ -18,7 +18,7 @@ class BigramConfig:
     embed_dim: int = 32
     dropout: float = 0.1
     save_iterations: int = 10000
-    max_iter: int = int(500000/8)
+    max_iter: int = 500000
 
 
 @dataclass

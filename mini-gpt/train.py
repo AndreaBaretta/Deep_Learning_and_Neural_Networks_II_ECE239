@@ -30,7 +30,7 @@ else:
 
 # Initialize wandb if you want to use it
 if config.to_log:
-    run = wandb.init(project="dl2_proj3", anonymous="allow")
+    run = wandb.init(project="dl2_proj3")
 
 
 def count_parameters(model):

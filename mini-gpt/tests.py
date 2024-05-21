@@ -7,9 +7,8 @@ import numpy as np
 def check_singleheadattention(model, checkpoint_file, device="cpu"):
 
     model.to(device)
-    # print(f"{model.causal_mask=}")
     model.eval()
-    # print(f"{model.causal_mask=}")
+    # model.train()
     data_file = "./test_cases.npz"
     key = "singleheadattention"
 
@@ -36,19 +35,16 @@ def check_singleheadattention(model, checkpoint_file, device="cpu"):
             ]
         )
 
+    # print(f"{ckpt["model_state_dict"]=}")
+    # assert False
+
     data = np.load(data_file)
     old_input = torch.from_numpy(data[key + "_input"])
     old_output = torch.from_numpy(data[key + "_output"])
     old_input = old_input.to(device)
     old_output = old_output.to(device)
-    # print("Before evaluate:")
-    # print(f"{model.causal_mask=}")
     check_output = model(old_input)
-    # print(f"{check_output.shape=}")
-    # print(f"{old_output.shape=}")
-    # print(f"{model.causal_mask=}")
-    print(f"{check_output=}")
-    print(f"{old_output=}")
+
     assert torch.allclose(check_output, old_output, atol=1e-5), "TEST CASE FAILED"
 
     return "TEST CASE PASSED!!!"

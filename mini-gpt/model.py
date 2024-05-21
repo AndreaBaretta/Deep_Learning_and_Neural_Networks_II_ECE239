@@ -90,6 +90,7 @@ class BigramLanguageModel(nn.Module):
         """
 
         ### ========= TODO : START ========= ###
+
         new_tokens = []
         with torch.no_grad():
             last_word = context[-1]
@@ -151,13 +152,12 @@ class SingleHeadAttention(nn.Module):
 
         # ========= TODO : START ========= #
 
-        self.key = nn.Linear(self.input_dim, self.output_key_query_dim)
-        self.query = nn.Linear(self.input_dim, self.output_key_query_dim)
-        self.value = nn.Linear(self.input_dim, self.output_value_dim)
-        self.dropout = nn.Dropout(dropout)
+        self.key = nn.Linear(self.input_dim, self.output_key_query_dim, bias=False)
+        self.query = nn.Linear(self.input_dim, self.output_key_query_dim, bias=False)
+        self.value = nn.Linear(self.input_dim, self.output_value_dim, bias=False)
+        self.dropout = nn.Dropout(0)
 
         causal_mask = torch.triu(torch.full((max_len, max_len), 1), diagonal=1)
-        print(f"{causal_mask=}")
         # ========= TODO : END ========= #
 
         self.register_buffer(
@@ -178,42 +178,18 @@ class SingleHeadAttention(nn.Module):
         """
 
         # ========= TODO : START ========= #
-        b, n, d = x.shape
+        b, n, _ = x.shape
 
         Q = self.query(x)
         K = self.key(x)
         V = self.value(x)
         M = self.causal_mask[:n,:n].bool()
 
-        attention = torch.bmm(Q, K.transpose(-1,-2))/torch.tensor(d).sqrt()
+        attention = torch.bmm(Q, K.transpose(-2,-1))/torch.tensor(self.output_key_query_dim).sqrt()
         attention[:,M] = float('-inf')
-        # print(f"{attention=}")
         softmax = nn.functional.softmax(attention.view(b*n, n), dim=1).view(b,n,n)
-        # print(f"{softmax=}")
-        # print(f"{V.shape=}")
         return torch.bmm(softmax, V)
-        # print(f"{torch.bmm(softmax, V)=}")
 
-
-        # # b, n, d = x.shape
-        # ret = []
-        # for i in range(len(x)):
-        #     Q = self.query(x[i])
-        #     K = self.key(x[i])
-        #     V = self.value(x[i])
-        #     M = self.causal_mask[:n,:n].bool()
-        #     # print(f"{K.shape=}")
-        #     # print(f"{K=}")
-        #     # print(f"{K.transpose(0,1)=}")
-
-        #     attention = Q@K.transpose(-1,-2)/torch.tensor(d).sqrt()
-        #     attention[M] = float('-inf')
-        #     softmax = nn.functional.softmax(attention, dim=1)
-        #     # assert False
-        #     ret.append(softmax@V)
-        #     # ret.append(softmax)
-        # print(f"{torch.stack(ret)=}")
-        # return torch.stack(ret)
         # ========= TODO : END ========= #
 
 
