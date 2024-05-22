@@ -283,11 +283,10 @@ class FeedForwardLayer(nn.Module):
 
         # ========= TODO : START ========= #
 
-        # self.fc1 = ...
-        # self.activation = ...
-        # self.fc2 = ...
-        # self.fc2 = ...
-        # self.dropout = ...
+        self.fc1 = nn.Linear(input_dim, feedforward_dim, bias=True)
+        self.activation = nn.GELU()
+        self.fc2 = nn.Linear(feedforward_dim, input_dim, bias=True)
+        self.dropout = nn.Dropout(dropout)
 
         # ========= TODO : END ========= #
 
@@ -300,13 +299,17 @@ class FeedForwardLayer(nn.Module):
             A tensor of shape (batch_size, num_tokens, token_dim) containing the input tokens.
 
         Output:
-        torch.Tensor
+        torch.Tensor    
             A tensor of shape (batch_size, num_tokens, token_dim) containing the output tokens.
         """
 
         ### ========= TODO : START ========= ###
 
-        raise NotImplementedError
+        out1 = self.fc1(x)
+        out2 = self.activation(out1)
+        out3 = self.fc2(out2)
+        out4 = self.dropout(out3)
+        return out4
 
         ### ========= TODO : END ========= ###
 
@@ -344,7 +347,10 @@ class LayerNorm(nn.Module):
 
         # ========= TODO : START ========= #
 
-        raise NotImplementedError
+        mu = torch.mean(input, dim=-1)[:, :, None]
+        var = torch.var(input, dim=-1, unbiased=False)[:, :, None]
+        ret = ((input - mu)/torch.sqrt(var+self.eps))*self.gamma + self.beta
+        return ret
 
         # ========= TODO : END ========= #
 
@@ -371,10 +377,10 @@ class TransformerLayer(nn.Module):
 
         # ========= TODO : START ========= #
 
-        # self.norm1 = ...
-        # self.attention = ...
-        # self.norm2 = ...
-        # self.feedforward = ...
+        self.norm1 = LayerNorm(input_dim)
+        self.attention = MultiHeadAttention(input_dim, num_heads)
+        self.norm2 = LayerNorm(input_dim)
+        self.feedforward = FeedForwardLayer(input_dim, feedforward_dim)
 
         # ========= TODO : END ========= #
 
@@ -393,7 +399,13 @@ class TransformerLayer(nn.Module):
 
         # ========= TODO : START ========= #
 
-        raise NotImplementedError
+        add11 = self.norm1(x)
+        add12 = self.attention(add11)
+        out1 = x + add12
+        add21 = self.norm2(out1)
+        add22 = self.feedforward(add21)
+        out2 = out1 + add22
+        return out2
 
         # ========= TODO : END ========= #
 
