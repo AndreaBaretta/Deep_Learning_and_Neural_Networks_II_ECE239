@@ -179,8 +179,6 @@ class SingleHeadAttention(nn.Module):
 
         # ========= TODO : START ========= #
         b, n, _ = x.shape
-        # print("Attention")
-        # print(f'{x.shape=}')
         Q = self.query(x)
         K = self.key(x)
         V = self.value(x)
@@ -191,7 +189,6 @@ class SingleHeadAttention(nn.Module):
         softmax = nn.functional.softmax(attention.view(b*n, n), dim=1).view(b,n,n)
         values = torch.bmm(softmax, V)
         ret = self.dropout(values)
-        # print("Returned out of attention")
         return ret
 
         # ========= TODO : END ========= #
@@ -252,11 +249,7 @@ class MultiHeadAttention(nn.Module):
             head_outs.append(getattr(self, f'head_{i}')(x))
             pass
         concat = torch.cat(head_outs, dim=-1)
-        # print("Big dog")
-        # print(f'{concat.shape=}')
         lin_out = self.out(concat)
-        # print("No buen")
-        # print(f'{lin_out.shape=}')
         ret = self.dropout(lin_out)
 
         return ret
@@ -404,8 +397,6 @@ class TransformerLayer(nn.Module):
 
         # ========= TODO : START ========= #
 
-        # print("In transformer")
-        # print(f'{x.shape=}')
         add11 = self.norm1(x)
         add12 = self.attention(add11)
         out1 = x + add12
@@ -488,15 +479,12 @@ class MiniGPT(nn.Module):
 
         ### ========= TODO : START ========= ###
         
-        # print(f'{x.shape=}')
         _, s = x.shape
         positional_embeddings = self.positional_embedding(self.pos)[None, :s]
         vocab_embeddings = self.vocab_embedding(x)
         l1 = vocab_embeddings + positional_embeddings
-        # print(f'{l1.shape=}')
         l2 = self.embed_dropout(l1)
         for transformer in self.transformer_layers:
-            # print(f"{l2.shape=}")
             l2 = transformer(l2)
         l3 = self.prehead_norm(l2)
         l4 = self.head(l3)
@@ -536,7 +524,7 @@ class MiniGPT(nn.Module):
         running_context = context
         max_context = len(getattr(self, 'pos'))
         with torch.no_grad():
-            for i in range(max_new_tokens):
+            for _ in range(max_new_tokens):
                 logits = self.forward(running_context[-max_context:][None,:]).squeeze()
                 dist = nn.functional.softmax(logits[-1, :])
                 sample = torch.multinomial(dist, 1)

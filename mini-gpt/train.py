@@ -80,9 +80,7 @@ Feel free to experiment with the parameters and I would be happy to talk to you 
 """
 
 def train_model(model):
-    # print(f"{len(train_dataloader)=}")
-    # print(f"{len(eval_dataloader)=}")
-    # loss_fn = nn.CrossEntropyLoss()
+
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0002, weight_decay=1e-5)
     model.to(device)
@@ -90,27 +88,12 @@ def train_model(model):
     ret = False
     while True:
         for X_train, y_train in train_dataloader:
-            # print("Ayo")
             val_loss = torch.tensor(0)
             X_val, y_val = next(iter(eval_dataloader))
             X_val, y_val = X_val.to(device), y_val.to(device)
             with torch.no_grad():
-                # loss = crossentropy(outputs.view(-1,config.vocab_size), targets.view(-1))
-                # inputs: (batch_size, num_tokens)
-
-                # targets: (batch_size, num_tokens)
-
-                # outputs: (batch_size, num_tokens, vocab_size)
-
                 val_outputs = model(X_val).squeeze()
-                # val_one_hot = nn.functional.one_hot(y_val, config.vocab_size).squeeze().float()
-                # print(f'{val_outputs.shape=}')
-                # print(f'{val_one_hot.shape=}')
-                # print(f'{y_val.shape=}')
                 val_loss = nn.functional.cross_entropy(val_outputs.view(-1,config.vocab_size), y_val.view(-1))
-                # print(f"{val_outputs.shape=}")
-                # print(f"{val_one_hot.shape=}")
-                # val_loss = loss_fn(val_outputs, val_one_hot, reduce='sum')
                 pass
 
             X_train, y_train = X_train.to(device), y_train.to(device)
@@ -119,13 +102,8 @@ def train_model(model):
             model.train()
             outputs = model(X_train).squeeze()
 
-            # one_hot = nn.functional.one_hot(y_train, config.vocab_size).squeeze().float()
-            # print({f"{outputs.shape=}"})
-            # print({f"{y_train.shape=}"})
-
             loss = nn.functional.cross_entropy(outputs.view(-1,config.vocab_size), y_train.view(-1))
-            # loss = nn.functional.cross_entropy(outputs, one_hot)
-            # loss = loss_fn(outputs, one_hot, reduction='sum')
+
             loss.backward()
             if config.to_clip_grad:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), config.gradient_clip)
@@ -135,7 +113,7 @@ def train_model(model):
                 print(f"Training iterations: {iters}/{config.max_iter} - loss={loss.item()}, val_loss={val_loss.item()}")
                 pass
             if iters % config.save_iterations == 0:
-                # torch.save(model.state_dict(), f"{MODEL}/bigram-{iters}.pt")
+                torch.save(model.state_dict(), f"saves/{MODEL}-{iters}.pt")
                 pass                
             run.log({"train-loss": loss.item(), "val-loss": val_loss.item()}, step=iters)
             if iters > config.max_iter:

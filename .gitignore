@@ -6,3 +6,4 @@ MNIST
 save
 **.pt
 **.pth
+wandb
