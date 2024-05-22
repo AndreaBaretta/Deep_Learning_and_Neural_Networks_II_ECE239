@@ -155,7 +155,7 @@ class SingleHeadAttention(nn.Module):
         self.key = nn.Linear(self.input_dim, self.output_key_query_dim, bias=False)
         self.query = nn.Linear(self.input_dim, self.output_key_query_dim, bias=False)
         self.value = nn.Linear(self.input_dim, self.output_value_dim, bias=False)
-        self.dropout = nn.Dropout(0)
+        self.dropout = nn.Dropout(dropout)
 
         causal_mask = torch.triu(torch.full((max_len, max_len), 1), diagonal=1)
         # ========= TODO : END ========= #
@@ -188,7 +188,9 @@ class SingleHeadAttention(nn.Module):
         attention = torch.bmm(Q, K.transpose(-2,-1))/torch.tensor(self.output_key_query_dim).sqrt()
         attention[:,M] = float('-inf')
         softmax = nn.functional.softmax(attention.view(b*n, n), dim=1).view(b,n,n)
-        return torch.bmm(softmax, V)
+        values = torch.bmm(softmax, V)
+        ret = self.dropout(values)
+        return ret
 
         # ========= TODO : END ========= #
 
@@ -218,9 +220,13 @@ class MultiHeadAttention(nn.Module):
 
         # ========= TODO : START ========= #
 
-        # self.head_{i} = ... # Use setattr to implement this dynamically, this is used as a placeholder
-        # self.out = ...
-        # self.dropout = ...
+        output_key_query_dim = input_dim//num_heads
+        output_value_dim = input_dim//num_heads
+        for i in range(num_heads):
+            setattr(self, f'head_{i}', SingleHeadAttention(input_dim, output_key_query_dim, output_value_dim, dropout=0))
+            pass
+        self.out = nn.Linear(input_dim, input_dim, bias=True)
+        self.dropout = nn.Dropout(dropout)
 
         # ========= TODO : END ========= #
 
@@ -239,7 +245,16 @@ class MultiHeadAttention(nn.Module):
 
         # ========= TODO : START ========= #
 
-        raise NotImplementedError
+        head_outs = []
+        for i in range(self.num_heads):
+            head_outs.append(getattr(self, f'head_{i}')(x))
+            pass
+        
+        concat = torch.cat(head_outs, dim=-1)
+        lin_out = self.out(concat)
+        ret = self.dropout(lin_out)
+
+        return ret
 
         # ========= TODO : END ========= #
 

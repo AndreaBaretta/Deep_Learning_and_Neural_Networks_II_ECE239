@@ -8,7 +8,7 @@ def check_singleheadattention(model, checkpoint_file, device="cpu"):
 
     model.to(device)
     model.eval()
-    # model.train()
+
     data_file = "./test_cases.npz"
     key = "singleheadattention"
 
