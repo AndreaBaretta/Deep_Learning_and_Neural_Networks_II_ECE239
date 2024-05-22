@@ -16,7 +16,7 @@ from dataset import TinyStoriesDataset
 from config import BigramConfig, MiniGPTConfig
 
 
-MODEL = "bigram"  # bigram or minigpt
+MODEL = "minigpt"  # bigram or minigpt
 
 if MODEL == "bigram":
     config = BigramConfig

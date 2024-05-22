@@ -533,6 +533,16 @@ class MiniGPT(nn.Module):
 
         ### ========= TODO : START ========= ###
 
-        raise NotImplementedError
+        running_context = context
+        max_context = len(getattr(self, 'pos'))
+        with torch.no_grad():
+            for i in range(max_new_tokens):
+                logits = self.forward(running_context[-max_context:][None,:]).squeeze()
+                dist = nn.functional.softmax(logits[-1, :])
+                sample = torch.multinomial(dist, 1)
+                running_context = torch.cat((running_context, sample))
+
+        return running_context
+
 
         ### ========= TODO : END ========= ###
