@@ -7,3 +7,5 @@ save
 **.pt
 **.pth
 wandb
+**.zip
+**.pkl
