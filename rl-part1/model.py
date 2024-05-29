@@ -66,13 +66,9 @@ class Nature_Paper_Conv(nn.Module):
 
     def forward(self, x:torch.Tensor)->torch.Tensor:
         #==== TODO: ====
+        if len(x.shape) == 3:
+            x = x[None,:,:,:]
+            pass
         out1 = self.CNN(x)
         out2 = self.MLP(out1)
         return out2
-
-        
-        
-    
-    
-
-

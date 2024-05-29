@@ -91,6 +91,7 @@ class DQN:
     def train(self, n_episodes:int = 1000,validate_every:int = 100, n_validation_episodes:int = 10, n_test_episodes:int = 10,save_every:int = 100):
         os.makedirs(self.save_path, exist_ok = True)
         best_val_reward = -np.inf
+        train_reward, train_loss, val_reward = [], [], []
         
         for episode in range(n_episodes):
             state,_ = self.env.reset()
@@ -113,27 +114,43 @@ class DQN:
                     loss += l
                     epsilon = self.epsilon_decay()
                     i += 1
+                    pass
+                pass
+
+            avg_loss = loss / i
+            train_loss.append(avg_loss)
             if self.wandb:
-                wandb.log({'total_reward': total_reward, 'loss': loss/i})
-            print(f"Episode: {episode}: Time: {time.time() - start_time} Total Reward: {total_reward} Avg_Loss: {loss/i}")
+                wandb.log({'total_reward': total_reward, 'loss': avg_loss})
+            print(f"Episode: {episode}: Time: {time.time() - start_time} Total Reward: {total_reward} Avg_Loss: {avg_loss}")
+            pass
+            
+            train_reward.append(total_reward)
             if episode % validate_every == validate_every - 1:
                 mean_reward, std_reward = self.validate(n_validation_episodes)
+                val_reward.append(mean_reward)
                 if self.wandb:
                     wandb.log({'mean_reward': mean_reward, 'std_reward': std_reward})
+                    pass
                 print("Validation Mean Reward: {} Validation Std Reward: {}".format(mean_reward, std_reward))
                 if mean_reward > best_val_reward:
                     best_val_reward = mean_reward
                     self._save('best')
+                    pass
+                pass
 
             if episode % save_every == save_every - 1:
                 self._save(str(episode))
+                pass
         
         self._save('final')
         self.load_model('best')
         mean_reward, std_reward = self.validate(n_test_episodes)
         if self.wandb:
             wandb.log({'mean_test_reward': mean_reward, 'std_test_reward': std_reward})
+            pass
         print("Test Mean Reward: {} Test Std Reward: {}".format(mean_reward, std_reward))
+        
+        return train_reward, train_loss, val_reward
                 
     def _optimize_model(self):
         """Optimizes the model
@@ -143,7 +160,25 @@ class DQN:
             float: the loss, if we do not have enough samples, we return 0
         """
         #====== TODO: ======
-        raise NotImplementedError   
+        if len(self.replay_buffer.buffer) < 5*self.batch_size:
+            return False, 0.0
+        
+        states,actions,rewards,next_states,dones = self.replay_buffer.sample(self.batch_size, self.device)
+        
+        with torch.no_grad():
+            y = rewards + self.gamma*self.model(next_states).max(dim=1)[0]
+            y[dones] = rewards[dones]
+            pass
+        
+        q = self.model(states)
+        targets = q[torch.arange(len(q)), actions]
+        loss = self.loss_fn(y, targets)
+
+        self.optimizer.zero_grad()
+        loss.backward()        
+        self.optimizer.step()
+
+        return True, loss.item()        
             
     def _sample_action(self, state:np.ndarray
                        , epsilon:float = 0.1)->int:
@@ -158,7 +193,14 @@ class DQN:
         """
 
         #====== TODO: ======
-        raise NotImplementedError   
+        if random.random() < epsilon:
+            return self.env.action_space.sample()
+        else:
+            tensor = torch.tensor(state, device=self.device).float()
+            with torch.no_grad():
+                q = self.model(tensor)
+                pass
+            return q.argmax().item()
         
     def _set_seed(self, seed:int):
         random.seed(seed)
@@ -258,9 +300,27 @@ class HardUpdateDQN(DQN):
             float: the loss, if we do not have enough samples, we return 0
         """
         #====== TODO: ======
-        raise NotImplementedError   
-        #hint: you can copy over most of the code from the parent class
-        #and only change one line
+        if len(self.replay_buffer.buffer) < 5*self.batch_size:
+            return False, 0.0
+        
+        states,actions,rewards,next_states,dones = self.replay_buffer.sample(self.batch_size, self.device)
+        
+        with torch.no_grad():
+            y = rewards + self.gamma*self.model(next_states).max(dim=1)[0]
+            y[dones] = rewards[dones]
+            pass
+        
+        q = self.model(states)
+        targets = q[torch.arange(len(q)), actions]
+        loss = self.loss_fn(y, targets)
+
+        self.optimizer.zero_grad()
+        loss.backward()        
+        self.optimizer.step()
+        
+        self._update_model()
+
+        return True, loss.item() 
     
     
     def _update_model(self):
@@ -285,7 +345,5 @@ class SoftUpdateDQN(HardUpdateDQN):
     def _update_model(self):
         """Soft updates the target model"""
         #====== TODO: ======
-        raise NotImplementedError   
-    
-
-        
+        for target_param, param in zip(self.target_model.parameters(), self.model.parameters()):
+            target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
