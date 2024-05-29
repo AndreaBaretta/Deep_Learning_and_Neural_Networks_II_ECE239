@@ -564,8 +564,12 @@ class HardUpdateDQN(DQN):
         super().__init__(env,model,model_kwargs, *args,**kwargs)
         #====== TODO: ======
         #fill in the initialization and synchronization of the target model weights
-        raise NotImplementedError   
-        
+        self.update_freq = update_freq
+        self.target_model = model(
+            self.observation_space,
+            self.env.action_space.n, **model_kwargs
+            ).to(self.device)
+        self.target_model.load_state_dict(self.model.state_dict())
         
     def _optimize_model(self):
         """Optimizes the model
